@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>Live Tracking</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;color:#333}
+
+/* Login */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login{background:#fff;padding:32px;border-radius:16px;text-align:center;width:300px;border:1px solid #e0e0e0;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.login h1{font-size:20px;margin-bottom:6px;color:#222}
+.login p{color:#888;font-size:13px;margin-bottom:20px}
+.login input{width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;background:#f9f9f9;color:#333;font-size:16px;margin-bottom:12px}
+.login input:focus{outline:none;border-color:#e94560}
+.login button{width:100%;padding:12px;background:#e94560;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer}
+.login .err{color:#e94560;font-size:12px;margin-bottom:8px;display:none}
+
+/* App */
+.app{display:none}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border-bottom:1px solid #e0e0e0;position:sticky;top:0;z-index:10}
+.top-bar h1{font-size:16px;color:#222}
+.top-bar h1 span{color:#e94560}
+.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:6px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Tabs mobile */
+.page-tabs{display:none;background:#fff;border-bottom:1px solid #e0e0e0}
+.page-tab{flex:1;text-align:center;padding:10px;font-size:13px;font-weight:700;color:#888;cursor:pointer;border-bottom:2px solid transparent}
+.page-tab.active{color:#e94560;border-bottom-color:#e94560}
+
+/* Main layout */
+.main{display:flex;gap:0;min-height:calc(100vh - 50px)}
+.col{flex:1;border-right:1px solid #e0e0e0;overflow-y:auto}
+.col:last-child{border-right:none}
+.col-header{padding:10px 14px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+.col-title{font-size:14px;font-weight:800;color:#222}
+.col-count{font-size:12px;color:#888}
+.col-tabs{display:flex;border-bottom:1px solid #eee;background:#fafafa}
+.col-tab{flex:1;text-align:center;padding:8px;font-size:12px;font-weight:700;color:#888;cursor:pointer;border-bottom:2px solid transparent}
+.col-tab.active{color:#e94560;border-bottom-color:#e94560}
+.col-feed{padding:8px}
+
+/* Visitor card */
+.v-card{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px;border:1px solid #e0e0e0;border-left:4px solid #16a34a;transition:opacity .3s}
+.v-card.exited{opacity:.6;border-left-color:#dc2626}
+.v-card.converted{border-left-color:#e94560;background:#fdf2f8}
+.v-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.v-id{font-weight:800;color:#e94560;font-size:15px}
+.v-name{font-weight:700;color:#222;font-size:14px;margin-left:6px}
+.v-visits{font-size:11px;color:#888}
+.v-time{font-size:12px;color:#888;font-weight:600}
+.v-meta{font-size:12px;color:#888;margin-bottom:6px}
+.v-source{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:700}
+.v-source.ADS{background:rgba(234,67,96,.12);color:#e94560}
+.v-source.SEO{background:rgba(22,163,74,.12);color:#16a34a}
+.v-source.DIRECT{background:rgba(37,99,235,.12);color:#2563eb}
+.v-source.REFERRAL{background:rgba(245,158,11,.12);color:#f59e0b}
+
+/* Steps */
+.v-steps{font-size:13px;line-height:1.9}
+.v-step{color:#16a34a}
+.v-step.current{color:#222;font-weight:700}
+.v-step .detail{color:#e94560;font-size:12px}
+
+/* Form fields */
+.v-fields{margin-top:6px;padding:8px 10px;background:#f9f9f9;border-radius:6px;font-size:12px;line-height:1.7}
+.v-field-typing{color:#f59e0b;font-weight:600}
+
+/* Typing banner */
+.v-typing{margin-top:6px;padding:6px 8px;background:#fff8e1;border-radius:6px;font-size:12px;color:#f59e0b;font-weight:700}
+
+/* Action */
+.v-action{margin-top:6px;padding:6px 8px;border-radius:6px;font-size:12px;font-weight:700}
+.v-action.devis{background:#e8f5e9;color:#16a34a}
+.v-action.paiement{background:#fff3cd;color:#856404}
+
+/* Conversion */
+.v-conversion{margin-top:6px;padding:8px;background:#fdf2f4;border-radius:6px;text-align:center;font-size:14px;font-weight:800;color:#e94560}
+
+/* Exit */
+.v-exit{margin-top:4px;font-size:11px;color:#dc2626;font-weight:600}
+
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:#bbb;font-size:14px}
+
+/* Responsive */
+@media(max-width:768px){
+    .main{flex-direction:column}
+    .col{border-right:none;display:none}
+    .col.mobile-active{display:block}
+    .page-tabs{display:flex}
+}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="loginWrap">
+<div class="login">
+    <h1>Live Tracking</h1>
+    <p>Shootnbox & Smakk</p>
+    <div class="err" id="loginErr">Mot de passe incorrect</div>
+    <input type="password" id="loginPass" placeholder="Mot de passe" autofocus onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Connexion</button>
+</div>
+</div>
+
+<div class="app" id="app">
+    <div class="top-bar">
+        <h1><span class="pulse"></span>Live <span>Tracking</span></h1>
+        <span style="font-size:12px;color:#888" id="clock"></span>
+    </div>
+
+    <div class="page-tabs" id="pageTabs">
+        <div class="page-tab active" onclick="showMobileCol('snb',this)">Shootnbox</div>
+        <div class="page-tab" onclick="showMobileCol('smk',this)">Smakk</div>
+    </div>
+
+    <div class="main">
+        <!-- Shootnbox -->
+        <div class="col mobile-active" id="col-snb">
+            <div class="col-header">
+                <span class="col-title">Shootnbox</span>
+                <span class="col-count" id="count-snb">0 en ligne</span>
+            </div>
+            <div class="col-tabs">
+                <div class="col-tab active" data-col="snb" data-tab="live" onclick="switchColTab(this)">En direct</div>
+                <div class="col-tab" data-col="snb" data-tab="valid" onclick="switchColTab(this)">Valides</div>
+            </div>
+            <div class="col-feed" id="feed-snb-live"></div>
+            <div class="col-feed" id="feed-snb-valid" style="display:none"></div>
+        </div>
+
+        <!-- Smakk -->
+        <div class="col" id="col-smk">
+            <div class="col-header">
+                <span class="col-title">Smakk</span>
+                <span class="col-count" id="count-smk">0 en ligne</span>
+            </div>
+            <div class="col-tabs">
+                <div class="col-tab active" data-col="smk" data-tab="live" onclick="switchColTab(this)">En direct</div>
+                <div class="col-tab" data-col="smk" data-tab="valid" onclick="switchColTab(this)">Valides</div>
+            </div>
+            <div class="col-feed" id="feed-smk-live"></div>
+            <div class="col-feed" id="feed-smk-valid" style="display:none"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+var API_SNB = 'https://shootnbox.fr/manager2/live_api.php?token=liveSnb2026&action=live';
+var API_SMK = 'https://smakk.fr/manager/live_api.php?token=liveSnb2026&action=live';
+var PASSWORD = 'Laurytal2!';
+var STEP_NAMES = {1:'Evenement',2:'Choix borne',3:'Options',4:'Personnalisation',5:'Assurances',6:'Logistique',7:'Coordonnees',8:'Recapitulatif',9:'Demande envoyee'};
+var STEP_ICONS = {1:'\u{1F4C5}',2:'\u{1F4F7}',3:'\u{2699}',4:'\u{1F3A8}',5:'\u{1F6E1}',6:'\u{1F69A}',7:'\u{1F4DD}',8:'\u{1F4B0}',9:'\u{2705}'};
+
+function doLogin(){
+    if(document.getElementById('loginPass').value===PASSWORD){
+        localStorage.setItem('live_auth','1');
+        showApp();
+    } else {
+        document.getElementById('loginErr').style.display='block';
+    }
+}
+function showApp(){
+    document.getElementById('loginWrap').style.display='none';
+    document.getElementById('app').style.display='block';
+    startPolling();
+}
+
+function showMobileCol(col,el){
+    document.querySelectorAll('.page-tab').forEach(function(t){t.classList.remove('active')});
+    el.classList.add('active');
+    document.querySelectorAll('.col').forEach(function(c){c.classList.remove('mobile-active')});
+    document.getElementById('col-'+col).classList.add('mobile-active');
+}
+
+function switchColTab(el){
+    var col=el.dataset.col, tab=el.dataset.tab;
+    el.parentElement.querySelectorAll('.col-tab').forEach(function(t){t.classList.remove('active')});
+    el.classList.add('active');
+    document.getElementById('feed-'+col+'-live').style.display = tab==='live' ? '' : 'none';
+    document.getElementById('feed-'+col+'-valid').style.display = tab==='valid' ? '' : 'none';
+}
+
+function startPolling(){
+    refresh();
+    setInterval(refresh, 500);
+    setInterval(function(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('fr-FR'); }, 1000);
+}
+
+function refresh(){
+    fetchSite(API_SNB, 'snb');
+    fetchSite(API_SMK + '&site=smakk', 'smk');
+}
+
+function fetchSite(url, prefix){
+    fetch(url).then(function(r){return r.json()}).then(function(d){
+        renderSite(d.visitors||[], prefix);
+    }).catch(function(){});
+}
+
+function renderSite(visitors, prefix){
+    var live=[], valid=[], activeCount=0;
+    visitors.forEach(function(v){
+        if(v.step >= 9 || v.order_id > 0) valid.push(v);
+        else live.push(v);
+        if(v.is_active) activeCount++;
+    });
+
+    // Sort live: active first, then by updated desc
+    live.sort(function(a,b){
+        if(a.is_active && !b.is_active) return -1;
+        if(!a.is_active && b.is_active) return 1;
+        return (b.updated||'') > (a.updated||'') ? 1 : -1;
+    });
+    valid.sort(function(a,b){ return (b.updated||'') > (a.updated||'') ? 1 : -1; });
+
+    document.getElementById('feed-'+prefix+'-live').innerHTML = live.length ? live.map(renderCard).join('') : '<div class="empty">Aucun visiteur en ce moment</div>';
+    document.getElementById('feed-'+prefix+'-valid').innerHTML = valid.length ? valid.map(renderCard).join('') : '<div class="empty">Aucune demande validee</div>';
+    document.getElementById('count-'+prefix).textContent = activeCount + ' en ligne';
+}
+
+function renderCard(v){
+    var c = v.choices||{};
+    var isActive = v.is_active;
+    var isConverted = v.step >= 9 || v.order_id > 0;
+    var cls = isConverted ? 'converted' : (isActive ? '' : 'exited');
+
+    // Duration
+    var dur = parseInt(v.duration)||0;
+    var durStr = dur>=3600 ? Math.floor(dur/3600)+'h'+Math.floor((dur%3600)/60)+'min' : dur>=60 ? Math.floor(dur/60)+'min' : dur+'s';
+
+    // Visits
+    var vc = v.visit_count||1, rc = v.resa_count||1;
+    var visitInfo = ' ('+vc+'x site, '+rc+'x resa)';
+
+    // Time
+    var startTime = v.started||v.updated||'';
+    var timeStr = '';
+    if(startTime){
+        var d = new Date(startTime.replace(' ','T'));
+        timeStr = String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    }
+
+    var html = '<div class="v-card '+cls+'">';
+
+    // Header
+    html += '<div class="v-head">';
+    html += '<div><span class="v-id">#'+v.visitor_num+'</span>';
+    if(v.nom) html += '<span class="v-name">'+v.nom+'</span>';
+    html += '<span class="v-visits">'+visitInfo+'</span>';
+    html += '</div>';
+    html += '<span class="v-time">'+durStr+'</span>';
+    html += '</div>';
+
+    // Meta
+    html += '<div class="v-meta">';
+    html += '<span class="v-source '+(v.source||'')+'">'+( v.source||'?')+'</span> ';
+    html += (v.device==='mobile'?'\u{1F4F1}':'\u{1F4BB}')+' '+(v.browser||'');
+    if(v.city) html += ' \u00B7 '+v.city;
+    if(timeStr) html += ' \u00B7 \u{1F552} '+timeStr;
+    html += '</div>';
+
+    // Steps
+    html += '<div class="v-steps">';
+    for(var s=1;s<=9;s++){
+        if(s>v.step) break;
+        if(s===8 && !c.nom && !c.email) continue;
+        var isCurrent = s===v.step && !isConverted;
+        var ico = isConverted||!isCurrent ? '\u2713' : STEP_ICONS[s];
+        var detail = '';
+
+        if(s===1){
+            var parts=[];
+            if(c.date) parts.push(c.date);
+            if(c.type) parts.push(c.type==='entreprise'?'Pro':'Particulier');
+            if(c.zone) parts.push(c.zone);
+            if(parts.length) detail = parts.join(', ');
+        }
+        if(s===2 && c.borne) detail = c.borne;
+        if(s===3 && c.options) detail = c.options.join(', ');
+        if(s===4 && c.perso) detail = c.perso;
+        if(s===5 && c.assurances) detail = c.assurances.join(', ');
+        if(s===6 && c.logistique) detail = c.logistique;
+        if(s===7){
+            var cp=[];
+            if(c.email) cp.push(c.email);
+            if(c.tel) cp.push(c.tel);
+            if(cp.length) detail = cp.join(' | ');
+        }
+        if(s===8 && c.total) detail = '<b>'+c.total+'\u20AC '+(c.tax||'TTC')+'</b>';
+        if(s===9) detail = '\u{1F389}';
+
+        html += '<div class="v-step'+(isCurrent?' current':'')+'">';
+        html += '<span>'+ico+'</span> '+STEP_NAMES[s];
+        if(detail) html += ' \u2014 <span class="detail">'+detail+'</span>';
+        html += '</div>';
+    }
+    html += '</div>';
+
+    // Typing
+    if(isActive && c.typing){
+        var tv = c.typing_value||'';
+        html += '<div class="v-typing">\u270F\uFE0F '+c.typing+(tv?': <span style="color:#333;font-weight:400">'+tv+'</span>':'')+'</div>';
+    }
+
+    // Form fields (only step 6+)
+    if(v.step>=6){
+        var fields=[];
+        var FLABELS={nom:'Nom',prenom:'Prenom',email:'Email',tel:'Tel',societe:'Societe',adresse:'Adresse',cp:'CP',ville:'Ville',message:'Message'};
+        var activeField = c.typing||'';
+        for(var fk in FLABELS){
+            var val='';
+            if(FLABELS[fk]===activeField && c.typing_value) val=c.typing_value;
+            else if(c[fk]) val=c[fk];
+            if(val){
+                var isTyping = FLABELS[fk]===activeField;
+                fields.push('<span class="'+(isTyping?'v-field-typing':'')+'">'+FLABELS[fk]+':</span> '+val);
+            }
+        }
+        if(fields.length) html += '<div class="v-fields">'+fields.join('<br>')+'</div>';
+    }
+
+    // Action
+    if(c.devis_sent || c.action==='devis_email'){
+        html += '<div class="v-action devis">\u2705 Estimation envoyee par mail</div>';
+    }
+    if(isActive && c.action && c.action!=='devis_email'){
+        var labels = {payer_cb:'Paiement CB',acompte_cb:'Acompte CB',payer_paypal:'PayPal',payer_paypal_4x:'PayPal 4x'};
+        html += '<div class="v-action paiement">\u{1F449} Le client a ouvert '+(labels[c.action]||c.action)+'</div>';
+    }
+
+    // Paiement valide
+    if(v.order_id>0 && c.action && c.action!=='devis_email'){
+        html += '<div class="v-action devis">\u{1F4B3} Paiement valide !</div>';
+    }
+
+    // Conversion
+    if(isConverted){
+        html += '<div class="v-conversion">\u{1F389} CONVERSION !</div>';
+    }
+
+    // Exit
+    if(!isActive && !isConverted){
+        html += '<div class="v-exit">\u274C Parti a '+(STEP_NAMES[v.step]||'?')+' apres '+durStr+'</div>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+if(localStorage.getItem('live_auth')==='1') showApp();
+</script>
+</body>
+</html>

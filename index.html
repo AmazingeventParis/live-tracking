@@ -248,8 +248,8 @@ function renderSite(visitors, prefix){
     var filter = sourceFilters[prefix]||'ALL';
     var filtered = filter==='ALL' ? visitors : visitors.filter(function(v){ return v.source===filter; });
     filtered.forEach(function(v){
-        if((v.step >= 9 || v.order_id > 0) && v.order_status >= 2) resa.push(v);
-        else if(v.step >= 9 || v.order_id > 0) valid.push(v);
+        if(v.order_id > 0 && v.order_status >= 2) resa.push(v);
+        else if(v.step >= 8 || v.order_id > 0) valid.push(v);
         else live.push(v);
         if(v.is_active) activeCount++;
     });

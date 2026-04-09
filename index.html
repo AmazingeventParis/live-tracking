@@ -176,6 +176,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;color:#33
 var API_SNB = 'https://shootnbox.fr/manager2/live_api.php?token=liveSnb2026&action=live';
 var API_SMK = 'https://smakk.fr/manager/live_api.php?token=liveSnb2026&action=live';
 var PASSWORD = 'Laurytal2!';
+var deleteOpen = false;
 var sourceFilters = {snb:'ALL',smk:'ALL'};
 function filterSource(prefix, source){
     sourceFilters[prefix] = source;
@@ -234,7 +235,7 @@ var lastData = {};
 function fetchSite(url, prefix){
     fetch(url).then(function(r){return r.json()}).then(function(d){
         var key = JSON.stringify(d.visitors||[]);
-        if(lastData[prefix] !== key || !lastData[prefix+'_rendered']) {
+        if(!deleteOpen && (lastData[prefix] !== key || !lastData[prefix+'_rendered'])) {
             lastData[prefix] = key;
             lastData[prefix+'_rendered'] = true;
             renderSite(d.visitors||[], prefix);
@@ -420,17 +421,23 @@ function renderCard(v){
 function confirmDelete(id, orderId, vnum){
     var card = document.getElementById('vcard-'+id);
     if(!card) return;
+    deleteOpen = true;
     var hasOrder = orderId > 0;
     var msg = hasOrder
         ? 'Supprimer #'+vnum+' du live ET du manager ?'
         : 'Supprimer #'+vnum+' du live ?';
     var overlay = document.createElement('div');
     overlay.className = 'v-del-confirm';
-    overlay.innerHTML = '<p>'+msg+'</p><div class="btns"><button class="btn-yes" onclick="doDelete('+id+','+orderId+')">Oui</button><button class="btn-no" onclick="this.closest(\'.v-del-confirm\').remove()">Non</button></div>';
+    overlay.innerHTML = '<p>'+msg+'</p><div class="btns"><button class="btn-yes" onclick="doDelete('+id+','+orderId+')">Oui</button><button class="btn-no" onclick="cancelDelete(this)">Non</button></div>';
     card.appendChild(overlay);
+}
+function cancelDelete(el){
+    deleteOpen = false;
+    el.closest('.v-del-confirm').remove();
 }
 
 function doDelete(id, orderId){
+    deleteOpen = false;
     var card = document.getElementById('vcard-'+id);
     if(card) card.style.opacity='0.3';
     // Determine which site this visitor belongs to

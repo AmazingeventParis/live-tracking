@@ -87,6 +87,17 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;color:#33
 /* Exit */
 .v-exit{margin-top:4px;font-size:11px;color:#dc2626;font-weight:600}
 
+/* Delete btn */
+.v-del{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:none;background:#f5f5f5;color:#999;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.v-del:hover{background:#fee2e2;color:#dc2626}
+.v-card{position:relative}
+.v-del-confirm{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;gap:8px}
+.v-del-confirm p{font-size:13px;font-weight:700;color:#333}
+.v-del-confirm .btns{display:flex;gap:8px}
+.v-del-confirm button{padding:8px 18px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
+.v-del-confirm .btn-yes{background:#dc2626;color:#fff}
+.v-del-confirm .btn-no{background:#e0e0e0;color:#333}
+
 /* Empty */
 .empty{text-align:center;padding:40px 20px;color:#bbb;font-size:14px}
 
@@ -114,6 +125,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;color:#33
 <div class="app" id="app">
     <div class="top-bar">
         <h1><span class="pulse"></span>Live <span>Tracking</span></h1>
+        <div style="display:flex;gap:6px;align-items:center">
+            <input type="date" id="dateFrom" value="2026-04-08" style="padding:4px 6px;border:1px solid #ccc;border-radius:5px;font-size:11px" onchange="refresh()">
+            <input type="date" id="dateTo" style="padding:4px 6px;border:1px solid #ccc;border-radius:5px;font-size:11px" onchange="refresh()">
+        </div>
         <span style="font-size:12px;color:#888" id="clock"></span>
     </div>
 
@@ -130,11 +145,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;color:#33
                 <span class="col-count" id="count-snb">0 en ligne</span>
             </div>
             <div class="col-tabs">
-                <div class="col-tab active" data-col="snb" data-tab="live" onclick="switchColTab(this)">En direct</div>
-                <div class="col-tab" data-col="snb" data-tab="valid" onclick="switchColTab(this)">Valides</div>
+                <div class="col-tab active" data-col="snb" data-tab="live" onclick="switchColTab(this)">En direct <span id="tab-snb-live-count"></span></div>
+                <div class="col-tab" data-col="snb" data-tab="valid" onclick="switchColTab(this)">Valides <span id="tab-snb-valid-count"></span></div>
+                <div class="col-tab" data-col="snb" data-tab="resa" onclick="switchColTab(this)">Reserves <span id="tab-snb-resa-count"></span></div>
             </div>
             <div class="col-feed" id="feed-snb-live"></div>
             <div class="col-feed" id="feed-snb-valid" style="display:none"></div>
+            <div class="col-feed" id="feed-snb-resa" style="display:none"></div>
         </div>
 
         <!-- Smakk -->
@@ -144,11 +161,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;color:#33
                 <span class="col-count" id="count-smk">0 en ligne</span>
             </div>
             <div class="col-tabs">
-                <div class="col-tab active" data-col="smk" data-tab="live" onclick="switchColTab(this)">En direct</div>
-                <div class="col-tab" data-col="smk" data-tab="valid" onclick="switchColTab(this)">Valides</div>
+                <div class="col-tab active" data-col="smk" data-tab="live" onclick="switchColTab(this)">En direct <span id="tab-smk-live-count"></span></div>
+                <div class="col-tab" data-col="smk" data-tab="valid" onclick="switchColTab(this)">Valides <span id="tab-smk-valid-count"></span></div>
+                <div class="col-tab" data-col="smk" data-tab="resa" onclick="switchColTab(this)">Reserves <span id="tab-smk-resa-count"></span></div>
             </div>
             <div class="col-feed" id="feed-smk-live"></div>
             <div class="col-feed" id="feed-smk-valid" style="display:none"></div>
+            <div class="col-feed" id="feed-smk-resa" style="display:none"></div>
         </div>
     </div>
 </div>
@@ -157,6 +176,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;color:#33
 var API_SNB = 'https://shootnbox.fr/manager2/live_api.php?token=liveSnb2026&action=live';
 var API_SMK = 'https://smakk.fr/manager/live_api.php?token=liveSnb2026&action=live';
 var PASSWORD = 'Laurytal2!';
+var sourceFilters = {snb:'ALL',smk:'ALL'};
+function filterSource(prefix, source){
+    sourceFilters[prefix] = source;
+    lastData[prefix+'_rendered'] = false;
+    refresh();
+}
 var STEP_NAMES = {1:'Evenement',2:'Choix borne',3:'Options',4:'Personnalisation',5:'Assurances',6:'Logistique',7:'Coordonnees',8:'Recapitulatif',9:'Demande envoyee'};
 var STEP_ICONS = {1:'\u{1F4C5}',2:'\u{1F4F7}',3:'\u{2699}',4:'\u{1F3A8}',5:'\u{1F6E1}',6:'\u{1F69A}',7:'\u{1F4DD}',8:'\u{1F4B0}',9:'\u{2705}'};
 
@@ -171,6 +196,7 @@ function doLogin(){
 function showApp(){
     document.getElementById('loginWrap').style.display='none';
     document.getElementById('app').style.display='block';
+    document.getElementById('dateTo').value = new Date().toISOString().slice(0,10);
     startPolling();
 }
 
@@ -187,6 +213,7 @@ function switchColTab(el){
     el.classList.add('active');
     document.getElementById('feed-'+col+'-live').style.display = tab==='live' ? '' : 'none';
     document.getElementById('feed-'+col+'-valid').style.display = tab==='valid' ? '' : 'none';
+    document.getElementById('feed-'+col+'-resa').style.display = tab==='resa' ? '' : 'none';
 }
 
 function startPolling(){
@@ -196,35 +223,67 @@ function startPolling(){
 }
 
 function refresh(){
-    fetchSite(API_SNB, 'snb');
-    fetchSite(API_SMK + '&site=smakk', 'smk');
+    var from = document.getElementById('dateFrom').value;
+    var to = document.getElementById('dateTo').value;
+    var dateParams = (from ? '&from='+from : '') + (to ? '&to='+to : '');
+    fetchSite(API_SNB + dateParams, 'snb');
+    fetchSite(API_SMK + '&site=smakk' + dateParams, 'smk');
 }
 
+var lastData = {};
 function fetchSite(url, prefix){
     fetch(url).then(function(r){return r.json()}).then(function(d){
-        renderSite(d.visitors||[], prefix);
+        var key = JSON.stringify(d.visitors||[]);
+        if(lastData[prefix] !== key || !lastData[prefix+'_rendered']) {
+            lastData[prefix] = key;
+            lastData[prefix+'_rendered'] = true;
+            renderSite(d.visitors||[], prefix);
+        }
     }).catch(function(){});
 }
 
 function renderSite(visitors, prefix){
-    var live=[], valid=[], activeCount=0;
-    visitors.forEach(function(v){
-        if(v.step >= 9 || v.order_id > 0) valid.push(v);
+    var live=[], valid=[], resa=[], activeCount=0;
+    var filter = sourceFilters[prefix]||'ALL';
+    var filtered = filter==='ALL' ? visitors : visitors.filter(function(v){ return v.source===filter; });
+    filtered.forEach(function(v){
+        if((v.step >= 9 || v.order_id > 0) && v.order_status >= 2) resa.push(v);
+        else if(v.step >= 9 || v.order_id > 0) valid.push(v);
         else live.push(v);
         if(v.is_active) activeCount++;
     });
 
-    // Sort live: active first, then by updated desc
     live.sort(function(a,b){
         if(a.is_active && !b.is_active) return -1;
         if(!a.is_active && b.is_active) return 1;
         return (b.updated||'') > (a.updated||'') ? 1 : -1;
     });
     valid.sort(function(a,b){ return (b.updated||'') > (a.updated||'') ? 1 : -1; });
+    resa.sort(function(a,b){ return (b.updated||'') > (a.updated||'') ? 1 : -1; });
 
     document.getElementById('feed-'+prefix+'-live').innerHTML = live.length ? live.map(renderCard).join('') : '<div class="empty">Aucun visiteur en ce moment</div>';
-    document.getElementById('feed-'+prefix+'-valid').innerHTML = valid.length ? valid.map(renderCard).join('') : '<div class="empty">Aucune demande validee</div>';
-    document.getElementById('count-'+prefix).textContent = activeCount + ' en ligne';
+    document.getElementById('feed-'+prefix+'-valid').innerHTML = valid.length ? valid.map(renderCard).join('') : '<div class="empty">Aucune demande</div>';
+    document.getElementById('feed-'+prefix+'-resa').innerHTML = resa.length ? resa.map(renderCard).join('') : '<div class="empty">Aucune reservation</div>';
+    var sources = {};
+    visitors.forEach(function(v){ var s=v.source||'?'; sources[s]=(sources[s]||0)+1; });
+    var srcHTML = '';
+    var af = sourceFilters[prefix]||'ALL';
+    function pill(key, count, label, bg, bgDim) {
+        var active = (af === key);
+        var style = 'display:inline-block;padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;margin:2px;cursor:pointer;border:none;color:#fff;'
+            + 'background:' + (active || af==='ALL' ? bg : bgDim) + ';'
+            + (active && af!=='ALL' ? 'box-shadow:0 3px 10px rgba(0,0,0,.25);transform:scale(1.05);' : '');
+        return '<button style="'+style+'" onclick="filterSource(\''+prefix+'\',\''+key+'\')">'+count+' '+label+'</button>';
+    }
+    srcHTML += pill('ALL', visitors.length, 'Tous', '#444', '#ccc');
+    if(sources.ADS) srcHTML += pill('ADS', sources.ADS, 'ADS', '#e94560', '#f5c6ce');
+    if(sources.SEO) srcHTML += pill('SEO', sources.SEO, 'SEO', '#16a34a', '#c6f5d5');
+    if(sources.DIRECT) srcHTML += pill('DIRECT', sources.DIRECT, 'DIRECT', '#2563eb', '#c6d9f5');
+    if(sources.REFERRAL) srcHTML += pill('REFERRAL', sources.REFERRAL, 'REFERRAL', '#f59e0b', '#f5e6c6');
+    document.getElementById('count-'+prefix).innerHTML = srcHTML;
+    document.getElementById('tab-'+prefix+'-live-count').textContent = '('+live.length+')';
+    document.getElementById('tab-'+prefix+'-valid-count').textContent = '('+valid.length+')';
+    document.getElementById('tab-'+prefix+'-resa-count').textContent = '('+resa.length+')';
 }
 
 function renderCard(v){
@@ -249,7 +308,9 @@ function renderCard(v){
         timeStr = String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
     }
 
-    var html = '<div class="v-card '+cls+'">';
+    var isValid = v.step >= 9 || v.order_id > 0;
+    var html = '<div class="v-card '+cls+'" id="vcard-'+v.id+'">';
+    html += '<button class="v-del" onclick="confirmDelete('+v.id+','+v.order_id+',\''+v.visitor_num+'\')" title="Supprimer">&times;</button>';
 
     // Header
     html += '<div class="v-head">';
@@ -354,6 +415,45 @@ function renderCard(v){
 
     html += '</div>';
     return html;
+}
+
+function confirmDelete(id, orderId, vnum){
+    var card = document.getElementById('vcard-'+id);
+    if(!card) return;
+    var hasOrder = orderId > 0;
+    var msg = hasOrder
+        ? 'Supprimer #'+vnum+' du live ET du manager ?'
+        : 'Supprimer #'+vnum+' du live ?';
+    var overlay = document.createElement('div');
+    overlay.className = 'v-del-confirm';
+    overlay.innerHTML = '<p>'+msg+'</p><div class="btns"><button class="btn-yes" onclick="doDelete('+id+','+orderId+')">Oui</button><button class="btn-no" onclick="this.closest(\'.v-del-confirm\').remove()">Non</button></div>';
+    card.appendChild(overlay);
+}
+
+function doDelete(id, orderId){
+    var card = document.getElementById('vcard-'+id);
+    if(card) card.style.opacity='0.3';
+    // Determine which site this visitor belongs to
+    var snbFeed = document.getElementById('col-snb');
+    var isSnb = snbFeed && snbFeed.querySelector('#vcard-'+id);
+    var apiBase = isSnb ? API_SNB.split('?')[0] : API_SMK.split('?')[0];
+    var delOrder = orderId > 0 ? '&delete_order=1&order_id='+orderId : '';
+    fetch(apiBase+'?token=liveSnb2026&action=delete&id='+id+delOrder)
+        .then(function(r){return r.json()})
+        .then(function(d){
+            if(d.ok){
+                if(card) card.remove();
+                lastData = {};
+                refresh();
+            } else {
+                alert('Erreur: '+(d.error||'?'));
+                if(card) card.style.opacity='1';
+            }
+        })
+        .catch(function(){
+            alert('Erreur reseau');
+            if(card) card.style.opacity='1';
+        });
 }
 
 if(localStorage.getItem('live_auth')==='1') showApp();

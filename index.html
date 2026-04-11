@@ -348,7 +348,7 @@ function renderCard(v){
             if(c.zone) parts.push(c.zone);
             if(parts.length) detail = parts.join(', ');
         }
-        if(s===2 && c.borne) detail = c.borne;
+        if(s===2 && c.borne) detail = c.borne + (c.voir_plus ? ' \u{1F50D}' : '');
         if(s===3 && c.options) detail = c.options.join(', ');
         if(s===4 && c.perso) detail = c.perso;
         if(s===5 && c.assurances) detail = c.assurances.join(', ');
